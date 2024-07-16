@@ -1,0 +1,13 @@
+[package]
+name = "lockerroom"
+authors = ["nutsalhan87"]
+version = "0.1.0"
+edition = "2021"
+description = "Readers-writer access to individual cells of your collection!"
+readme = "README.md"
+repository = "https://github.com/nutsalhan87/lockerroom"
+license = "MIT"
+keywords = ["collections"]
+categories = ["data-structures"]
+
+[dependencies]
