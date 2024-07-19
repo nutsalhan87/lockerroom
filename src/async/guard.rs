@@ -1,15 +1,14 @@
 //! Guards for different locking types.
 
-use std::{
-    ops::{Deref, DerefMut},
-    sync::{RwLockReadGuard, RwLockWriteGuard},
-};
+use std::ops::{Deref, DerefMut};
 
-use crate::collection::{Collection, ShadowLocksCollection};
+use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
+
+use super::{Collection, ShadowLocksCollection};
 
 /// RAII structure used to release the shared read access of a cell lock when dropped.
 ///
-/// This structure is created by the [`read_cell`](crate::LockerRoom::read_cell) methods on [`LockerRoom`](crate::LockerRoom).
+/// This structure is created by the [`read_cell`](crate::LockerRoomAsync::read_cell) methods on [`LockerRoomAsync`](crate::LockerRoomAsync).
 pub struct ReadCellGuard<'a, T>
 where
     T: Collection,
@@ -53,7 +52,7 @@ where
 
 /// RAII structure used to release the exclusive write access of a cell lock when dropped.
 ///
-/// This structure is created by the [`write_cell`](crate::LockerRoom::write_cell) methods on [`LockerRoom`](crate::LockerRoom).
+/// This structure is created by the [`write_cell`](crate::LockerRoomAsync::write_cell) methods on [`LockerRoomAsync`](crate::LockerRoomAsync).
 pub struct WriteCellGuard<'a, T>
 where
     T: Collection,
@@ -106,7 +105,7 @@ where
 
 /// RAII structure used to release the exclusive write access of a whole collection lock when dropped.
 ///
-/// This structure is created by the [`lock_room`](crate::LockerRoom::lock_room) methods on [`LockerRoom`](crate::LockerRoom).
+/// This structure is created by the [`lock_room`](crate::LockerRoomAsync::lock_room) methods on [`LockerRoomAsync`](crate::LockerRoomAsync).
 pub struct RoomGuard<'a, T>
 where
     T: Collection,

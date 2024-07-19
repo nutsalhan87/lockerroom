@@ -1,23 +1,24 @@
-//! This module describes traits for implementing [`LockerRoom`](crate::LockerRoom)'s functionality for a certain collection.
+//! This module describes traits for implementing [`LockerRoomAsync`](crate::LockerRoomAsync)'s functionality for a certain collection.
 
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, HashMap, VecDeque},
     hash::Hash,
-    sync::RwLock,
 };
 
-/// Trait describes functionality that necessary for [`LockerRoom`](crate::LockerRoom).
+use tokio::sync::RwLock;
+
+/// Trait describes functionality of collection that necessary for creating [`LockerRoomAsync`](crate::LockerRoomAsync).
 pub trait Collection {
     /// Type that should be used as index
     type Idx;
     /// The returned type after indexing.
     type Output: ?Sized;
-    /// Type of collection which stores [`RwLock`]s. Usually the same type as implementor.
+    /// Type of collection which stores tokio's [`RwLock`]s. Usually the same type as `Collection`'s implementor.
     ///
-    /// It's necessary because of performance. For example, implementing Collection for [`Vec`] but using [`BTreeMap`] as ShadowLocks makes ittle sense
-    /// because [`LockerRoom`](crate::LockerRoom) at every [`index`](Self::index) (or [`index_mut`](Self::index_mut)) method call will also call the
-    /// same method of ShadowLocks. This makes meaningless to use [Vec] because its performance will be bottlenecked by [BTreeMap].
+    /// It's necessary because of performance. For example, implementing Collection for [`Vec`] but using [`BTreeMap`] as ShadowLocks makes little sense
+    /// because [`LockerRoomAsync`](crate::LockerRoomAsync) at every [`index`](Self::index) (or [`index_mut`](Self::index_mut)) method call will also call the
+    /// same method of ShadowLocks. This makes meaningless to use `Vec` because its performance will be bottlenecked by `BTreeMap`.
     type ShadowLocks: ShadowLocksCollection<Idx = Self::Idx>;
 
     /// Performs the indexing operation. But unlike the [`Index::index`](std::ops::Index::index), it doesn't panic, and return None.
@@ -181,7 +182,7 @@ pub trait ShadowLocksCollection {
 
     /// Performs the indexing operation.
     fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&RwLock<()>>;
-    /// Update internal state to store [`RwLock`]'s with new indices.
+    /// Update internal state to store tokio's [`RwLock`]'s with new indices.
     fn update_indices(&mut self, indices: impl Iterator<Item = Self::Idx>);
 }
 

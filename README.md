@@ -1,13 +1,16 @@
 # Locker Room
 ### Readers-writer access to individual cells of your collection!
 
-## LockerRoom
-The central feature of the crate is implemented by this structure. More specifically, it provides such functionality:
-1. Shared readers access to single cell of collection with `read_cell` method;
-2. Exclusive writer access to single cell of collection with `write_cell` method;
-3. Exclusive writer access to whole collection with `lock_room` method.
+## LockerRoom and LockerRoomAsync
+The central features of the crate is implemented by these structures. More specifically, they provide such functionality:
+1. Shared readers access to single cell of collection with `LockerRoom::read_cell` and `LockerRoomAsync::read_cell`;
+2. Exclusive writer access to single cell of collection with `LockerRoom::write_cell` and `LockerRoomAsync::write_cell`;
+3. Exclusive writer access to whole collection with `LockerRoom::lock_room` and `LockerRoomAsync::lock_room`.
 
-### Example
+But `LockerRoomAsync` is optional - you need to enable feature `async` to use it. It depends on
+[`tokio`](https://docs.rs/tokio/latest/tokio/index.html)'s [`RwLock`](https://docs.rs/tokio/latest/tokio/sync/struct.RwLock.html).
+
+### LockerRoom example
 ```rust
 let v = vec![0, 1, 2, 3, 4, 5];
 let locker_room: LockerRoom<_> = v.into();
@@ -18,6 +21,23 @@ thread::scope(|scope| {
 });
 assert_eq!(3, *locker_room.read_cell(0).unwrap());
 ```
+
+### LockerRoomAsync example
+```rust
+let v = vec![0, 1, 2, 3, 4, 5];
+let locker_room: LockerRoomAsync<_> = v.into();
+let locker_room = Arc::new(locker_room);
+
+let locker_room_cloned = Arc::clone(&locker_room);
+let join1 = spawn(async move { *locker_room_cloned.write_cell(0).await.unwrap() += 1 });
+
+let locker_room_cloned = Arc::clone(&locker_room);
+let join2 = spawn(async move { *locker_room_cloned.write_cell(0).await.unwrap() += 2 });
+
+join!(join1, join2);
+assert_eq!(3, *locker_room.read_cell(0).await.unwrap());
+```
+
 ### Deadlock example
 Carefully block multiple cells in one scope. Otherwise, situation like this may occur:
 ```text
@@ -29,14 +49,23 @@ let _w2 = locker_room.write_cell(1);   |
                                        |  // will deadlock
                                        |  let _w2 = locker_room.write_cell(0);
 ```
+
 ### Collections?
-By default you can create `LockerRoom` from `array`, `Vec`, `VecDeque`, `HashMap` and `BTreeMap`.
-But the crate provides trait, by which implementing to your collection, you can make it compatible with `LockerRoom`.
+By default you can create `LockerRoom` and `LockerRoomAsync` from `array`, `Vec`, `VecDeque`, `HashMap` and `BTreeMap`.
+
+But the crate provides traits, by which implementing to your collection, you can make it compatible with `LockerRoom` and `LockerRoomAsync`.
+
 ## Collection
-Crucial part of the crate that helps your collection to be compatible with `LockerRoom`. 
+Crucial part of the crate that helps your collection to be compatible with `LockerRoom`.
 
 Just implement it into your collection and everything will work!
-## Example
+
+In fact, there is two different `Collection`s: `sync::Collection` and `async::Collection`.
+First one is for the `LockerRoom` and the second one is for the `LockerRoomAsync`. So you need to implement both of them for your collection to use it with
+both LockerRooms.\
+That's bad design. But I'll fix it in next versions of the crate.
+
+### Example
 Let's implement the trait for the struct from `Index`'s [example](https://doc.rust-lang.org/std/ops/trait.Index.html#examples):
 ```rust
 enum Nucleotide {
@@ -84,6 +113,7 @@ impl Collection for NucleotideCount {
         Default::default()
     }
 }
+
 struct NucleotideShadowLocks {
     a: RwLock<()>,
     c: RwLock<()>,

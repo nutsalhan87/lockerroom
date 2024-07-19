@@ -1,7 +1,7 @@
 [package]
 name = "lockerroom"
 authors = ["nutsalhan87"]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Readers-writer access to individual cells of your collection!"
 readme = "README.md"
@@ -11,3 +11,14 @@ keywords = ["collections"]
 categories = ["data-structures"]
 
 [dependencies]
+tokio = { version = "1.38.1", features = ["sync"], optional = true }
+
+[features]
+async = ["dep:tokio"]
+
+[dev-dependencies]
+tokio = { version = "1.38.1", features = ["macros"] }
+tokio-test = "0.4.4"
+
+[package.metadata.docs.rs]
+all-features = true
