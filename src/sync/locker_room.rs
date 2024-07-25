@@ -1,6 +1,8 @@
 use std::{borrow::Borrow, cell::UnsafeCell, marker::PhantomData, sync::RwLock};
 
-use super::{Collection, ReadCellGuard, RoomGuard, ShadowLocksCollection, WriteCellGuard};
+use crate::{Collection, ShadowLocksCollection};
+
+use super::{ReadCellGuard, RoomGuard, WriteCellGuard};
 
 /// Provides readers-writer lock for each indexed cell or exclusive write access to whole collection.
 ///

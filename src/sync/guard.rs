@@ -5,7 +5,7 @@ use std::{
     sync::{RwLockReadGuard, RwLockWriteGuard},
 };
 
-use super::{Collection, ShadowLocksCollection};
+use crate::{Collection, ShadowLocksCollection};
 
 /// RAII structure used to release the shared read access of a cell lock when dropped.
 ///

@@ -8,7 +8,7 @@
 //! 2. Exclusive writer access to single cell of collection with [`LockerRoom::write_cell`] and [`LockerRoomAsync::write_cell`];
 //! 3. Exclusive writer access to whole collection with [`LockerRoom::lock_room`] and [`LockerRoomAsync::lock_room`].
 //!
-//! But `LockerRoomAsync` is optional -- you need to enable feature `async` to use it. It depends on
+//! But `LockerRoomAsync` is optional - you need to enable feature `async` to use it. It depends on
 //! [`tokio`](https://docs.rs/tokio/latest/tokio/index.html)'s [`RwLock`](https://docs.rs/tokio/latest/tokio/sync/struct.RwLock.html).
 //!
 //! ## `LockerRoom` example
@@ -64,21 +64,16 @@
 //!
 //! But the crate provides traits, by which implementing to your collection, you can make it compatible with `LockerRoom` and `LockerRoomAsync`.
 //!
-//! # `Collection`
-//! Crucial part of the crate that helps your collection to be compatible with `LockerRoom`.
+//! # [`Collection`]
+//! Crucial part of the crate that helps your collection to be compatible with `LockerRoom` and `LockerRoomAsync`.
 //!
 //! Just implement it into your collection and everything will work!
-//!
-//! In fact, there is two different `Collection`s: [`sync::Collection`] and [`async::Collection`].
-//! First one is for the `LockerRoom` and the second one is for the `LockerRoomAsync`. So you need to implement both of them for your collection to use it with
-//! both LockerRooms.\
-//! That's bad design. But I'll fix it in next versions of the crate.
 //!
 //! ## Example
 //! Let's implement the trait for the struct from [`Index`](std::ops::Index)'s [example](https://doc.rust-lang.org/std/ops/trait.Index.html#examples):
 //! ```
 //! # use std::{sync::RwLock, borrow::Borrow};
-//! # use lockerroom::sync::{Collection, ShadowLocksCollection};
+//! # use lockerroom::{Collection, ShadowLocksCollection, ShadowLocksCollectionAsync};
 //! enum Nucleotide {
 //!     C,
 //!     A,
@@ -98,6 +93,7 @@
 //!     type Output = usize;
 //!     type Idx = Nucleotide;
 //!     type ShadowLocks = NucleotideShadowLocks;
+//! #   type ShadowLocksAsync = NucleotideShadowLocksAsync;
 //!
 //!     fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&Self::Output> {
 //!         Some(match index.borrow() {
@@ -124,6 +120,9 @@
 //!     fn shadow_locks(&self) -> Self::ShadowLocks {
 //!         Default::default()
 //!     }
+//! #     fn shadow_locks_async(&self) -> Self::ShadowLocksAsync {
+//! #        Default::default()
+//! #    }
 //! }
 //!
 //! # #[derive(Default)]
@@ -150,13 +149,136 @@
 //!         // No need to reindex because NucleotideShadowLocks has static structure.
 //!     }
 //! }
+//! # #[derive(Default)]
+//! # struct NucleotideShadowLocksAsync {
+//! #     a: tokio::sync::RwLock<()>,
+//! #     c: tokio::sync::RwLock<()>,
+//! #     g: tokio::sync::RwLock<()>,
+//! #     t: tokio::sync::RwLock<()>,
+//! # }
+//! # impl ShadowLocksCollectionAsync for NucleotideShadowLocksAsync {
+//! #     type Idx = Nucleotide;
+//! #
+//! #     fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&tokio::sync::RwLock<()>> {
+//! #         Some(match index.borrow() {
+//! #             Nucleotide::A => &self.a,
+//! #             Nucleotide::C => &self.c,
+//! #             Nucleotide::G => &self.g,
+//! #             Nucleotide::T => &self.t,
+//! #         })
+//! #     }
+//! #     fn update_indices(&mut self, _indices: impl Iterator<Item = Self::Idx>) {
+//! #     }
+//! }
+//! ```
+//!
+//! If feature `async` is enabled, `Collection` must also include [`Collection::ShadowLocksAsync`] type and [`Collection::shadow_locks_async`] method.
+//! Thus [`ShadowLocksCollectionAsync`] must be implemented.
+//! ```
+//! # use std::{sync::RwLock, borrow::Borrow};
+//! # use lockerroom::{Collection, ShadowLocksCollection, ShadowLocksCollectionAsync};
+//! # enum Nucleotide {
+//! #     C,
+//! #     A,
+//! #     G,
+//! #     T,
+//! # }
+//! # #[derive(Default)]
+//! # struct NucleotideCount {
+//! #     pub a: usize,
+//! #     pub c: usize,
+//! #     pub g: usize,
+//! #     pub t: usize,
+//! # }
+//!
+//! impl Collection for NucleotideCount {
+//! #    type Output = usize;
+//! #    type Idx = Nucleotide;
+//! #    type ShadowLocks = NucleotideShadowLocks;
+//!     // ...
+//!     type ShadowLocksAsync = NucleotideShadowLocksAsync;
+//!     // ...
+//! #    fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&Self::Output> {
+//! #        Some(match index.borrow() {
+//! #            Nucleotide::A => &self.a,
+//! #            Nucleotide::C => &self.c,
+//! #            Nucleotide::G => &self.g,
+//! #            Nucleotide::T => &self.t,
+//! #        })
+//! #    }
+//! #    fn index_mut(&mut self, index: impl Borrow<Self::Idx>) -> Option<&mut Self::Output> {
+//! #        Some(match index.borrow() {
+//! #            Nucleotide::A => &mut self.a,
+//! #            Nucleotide::C => &mut self.c,
+//! #            Nucleotide::G => &mut self.g,
+//! #            Nucleotide::T => &mut self.t,
+//! #        })
+//! #    }
+//! #    fn indices(&self) -> impl Iterator<Item = Self::Idx> {
+//! #        [Nucleotide::A, Nucleotide::C, Nucleotide::G, Nucleotide::T].into_iter()
+//! #    }
+//! #    fn shadow_locks(&self) -> Self::ShadowLocks {
+//! #        Default::default()
+//! #    }
+//!     fn shadow_locks_async(&self) -> Self::ShadowLocksAsync {
+//!         Default::default()
+//!     }
+//! }
+//!
+//! # #[derive(Default)]
+//! # struct NucleotideShadowLocks {
+//! #     a: RwLock<()>,
+//! #     c: RwLock<()>,
+//! #     g: RwLock<()>,
+//! #     t: RwLock<()>,
+//! # }
+//! # impl ShadowLocksCollection for NucleotideShadowLocks {
+//! #    type Idx = Nucleotide;
+//! #    fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&RwLock<()>> {
+//! #        Some(match index.borrow() {
+//! #            Nucleotide::A => &self.a,
+//! #            Nucleotide::C => &self.c,
+//! #            Nucleotide::G => &self.g,
+//! #            Nucleotide::T => &self.t,
+//! #        })
+//! #    }
+//! #    fn update_indices(&mut self, _indices: impl Iterator<Item = Self::Idx>) {
+//! #        // No need to reindex because NucleotideShadowLocks has static structure.
+//! #    }
+//! # }
+//! # #[derive(Default)]
+//! struct NucleotideShadowLocksAsync {
+//!     a: tokio::sync::RwLock<()>,
+//!     c: tokio::sync::RwLock<()>,
+//!     g: tokio::sync::RwLock<()>,
+//!     t: tokio::sync::RwLock<()>,
+//! }
+//!
+//! impl ShadowLocksCollectionAsync for NucleotideShadowLocksAsync {
+//!     type Idx = Nucleotide;
+//!
+//!     fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&tokio::sync::RwLock<()>> {
+//!         Some(match index.borrow() {
+//!             Nucleotide::A => &self.a,
+//!             Nucleotide::C => &self.c,
+//!             Nucleotide::G => &self.g,
+//!             Nucleotide::T => &self.t,
+//!         })
+//!     }
+//!
+//!     fn update_indices(&mut self, _indices: impl Iterator<Item = Self::Idx>) {
+//!         // No need to reindex because NucleotideShadowLocksAsync has static structure.
+//!     }
+//! }
 //! ```
 
 #[cfg(any(feature = "async", doc))]
 #[doc(cfg(feature = "async"))]
 pub mod r#async;
+mod collection;
 pub mod sync;
 
+pub use collection::*;
 #[cfg(any(feature = "async", doc))]
 #[doc(cfg(feature = "async"))]
 pub use r#async::LockerRoomAsync;

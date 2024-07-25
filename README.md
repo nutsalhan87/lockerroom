@@ -56,14 +56,9 @@ By default you can create `LockerRoom` and `LockerRoomAsync` from `array`, `Vec`
 But the crate provides traits, by which implementing to your collection, you can make it compatible with `LockerRoom` and `LockerRoomAsync`.
 
 ## Collection
-Crucial part of the crate that helps your collection to be compatible with `LockerRoom`.
+Crucial part of the crate that helps your collection to be compatible with `LockerRoom` and `LockerRoomAsync`.
 
 Just implement it into your collection and everything will work!
-
-In fact, there is two different `Collection`s: `sync::Collection` and `async::Collection`.
-First one is for the `LockerRoom` and the second one is for the `LockerRoomAsync`. So you need to implement both of them for your collection to use it with
-both LockerRooms.\
-That's bad design. But I'll fix it in next versions of the crate.
 
 ### Example
 Let's implement the trait for the struct from `Index`'s [example](https://doc.rust-lang.org/std/ops/trait.Index.html#examples):
@@ -135,6 +130,43 @@ impl ShadowLocksCollection for NucleotideShadowLocks {
 
     fn update_indices(&mut self, _indices: impl Iterator<Item = Self::Idx>) {
         // No need to reindex because NucleotideShadowLocks has static structure.
+    }
+}
+```
+
+If feature `async` is enabled, `Collection` must also include `Collection::ShadowLocksAsync` type and `Collection::shadow_locks_async` method. 
+Thus `ShadowLocksCollectionAsync` must be implemented.
+```rust
+impl Collection for NucleotideCount {
+    // ...
+    type ShadowLocksAsync = NucleotideShadowLocksAsync;
+    // ...
+    fn shadow_locks_async(&self) -> Self::ShadowLocksAsync {
+        Default::default()
+    }
+}
+
+struct NucleotideShadowLocksAsync {
+    a: tokio::sync::RwLock<()>,
+    c: tokio::sync::RwLock<()>,
+    g: tokio::sync::RwLock<()>,
+    t: tokio::sync::RwLock<()>,
+}
+
+impl ShadowLocksCollectionAsync for NucleotideShadowLocksAsync {
+    type Idx = Nucleotide;
+
+    fn index(&self, index: impl Borrow<Self::Idx>) -> Option<&tokio::sync::RwLock<()>> {
+        Some(match index.borrow() {
+            Nucleotide::A => &self.a,
+            Nucleotide::C => &self.c,
+            Nucleotide::G => &self.g,
+            Nucleotide::T => &self.t,
+        })
+    }
+
+    fn update_indices(&mut self, _indices: impl Iterator<Item = Self::Idx>) {
+        // No need to reindex because NucleotideShadowLocksAsync has static structure.
     }
 }
 ```

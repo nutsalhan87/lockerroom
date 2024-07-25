@@ -2,7 +2,9 @@ use std::{borrow::Borrow, cell::UnsafeCell, marker::PhantomData};
 
 use tokio::sync::RwLock;
 
-use super::{Collection, ReadCellGuard, RoomGuard, ShadowLocksCollection, WriteCellGuard};
+use crate::{Collection, ShadowLocksCollectionAsync};
+
+use super::{ReadCellGuard, RoomGuard, WriteCellGuard};
 
 /// Provides readers-writer lock for each indexed cell or exclusive write access to whole collection.
 /// Same as [`LockerRoom`](crate::LockerRoom) but async.
@@ -33,7 +35,7 @@ where
 {
     collection: UnsafeCell<T>,
     global_lock: RwLock<()>,
-    index_locks: UnsafeCell<T::ShadowLocks>,
+    index_locks: UnsafeCell<T::ShadowLocksAsync>,
     phantom: PhantomData<T::Idx>,
 }
 
@@ -102,7 +104,7 @@ where
     T: Collection,
 {
     fn from(value: T) -> Self {
-        let index_locks = value.shadow_locks();
+        let index_locks = value.shadow_locks_async();
         Self {
             collection: UnsafeCell::new(value),
             global_lock: Default::default(),

@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 
 use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 
-use super::{Collection, ShadowLocksCollection};
+use crate::{Collection, ShadowLocksCollectionAsync};
 
 /// RAII structure used to release the shared read access of a cell lock when dropped.
 ///
@@ -111,7 +111,7 @@ where
     T: Collection,
 {
     collection: &'a mut T,
-    index_locks: &'a mut T::ShadowLocks,
+    index_locks: &'a mut T::ShadowLocksAsync,
     #[allow(dead_code)]
     global_rwlock_write_guard: RwLockWriteGuard<'a, ()>,
 }
@@ -122,7 +122,7 @@ where
 {
     pub(crate) fn new(
         collection: &'a mut T,
-        index_locks: &'a mut T::ShadowLocks,
+        index_locks: &'a mut T::ShadowLocksAsync,
         global_rwlock_write_guard: RwLockWriteGuard<'a, ()>,
     ) -> Self {
         Self {
